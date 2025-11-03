@@ -1,5 +1,7 @@
 # Step 2: Import libraries
 from unsloth import FastLanguageModel
+import datasets # Import at the top of your script
+import shutil
 import os
 import torch
 import numpy as np
@@ -18,11 +20,49 @@ import seqeval
 from seqeval.metrics import classification_report
 
 
-# Step 3 (Corrected): Load and Preprocess the Dataset
 def load_and_prepare_dataset(tokenizer):
-    """Loads the CoNLL-2003 dataset and prepares it for training."""
-    # The only change is adding trust_remote_code=True
-    dataset = load_dataset("conll2003", trust_remote_code=True)
+    """
+    Loads the CoNLL-2003 dataset, handling potential caching issues,
+    and prepares it for training.
+    """
+    print(f"Using 'datasets' library version: {datasets.__version__}")
+
+    dataset_name = "conll2003"
+
+    try:
+        # First, try loading with the fix and forcing a redownload.
+        # This is the most reliable way to clear a bad cache entry.
+        print("Attempting to load dataset with 'force_redownload'...")
+        dataset = load_dataset(
+            dataset_name,
+            trust_remote_code=True,
+            download_mode="force_redownload"
+        )
+        print("Dataset loaded successfully.")
+    except Exception as e:
+        print(f"Initial loading failed: {e}")
+        # If it still fails, we can take the more drastic step of
+        # manually deleting the cache folder for this dataset.
+        try:
+            from datasets.load import cached_path
+            from urllib.parse import urlparse
+
+            # This is an internal way to find the cache path. It might change in future versions.
+            # A simpler way is to find and delete ~/.cache/huggingface/datasets/conll2003
+            cache_dir = os.path.join(os.path.expanduser('~'), '.cache', 'huggingface', 'datasets', dataset_name)
+            if os.path.exists(cache_dir):
+                print(f"Manually deleting cache directory: {cache_dir}")
+                shutil.rmtree(cache_dir)
+                print("Cache deleted. Retrying dataset load...")
+                # Retry loading after clearing the cache
+                dataset = load_dataset(dataset_name, trust_remote_code=True)
+            else:
+                print("Cache directory not found, cannot clear manually.")
+                raise e  # Re-raise the original exception
+        except Exception as final_e:
+            print(f"FATAL: Could not load the dataset even after clearing cache. Error: {final_e}")
+            print("Please check your internet connection and Hugging Face Hub status.")
+            raise
 
     label_list = dataset["train"].features["ner_tags"].feature.names
 
