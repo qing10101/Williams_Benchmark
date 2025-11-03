@@ -1,4 +1,6 @@
+# Step 2: Import libraries
 from unsloth import FastLanguageModel
+import os
 import torch
 import numpy as np
 import pandas as pd
@@ -16,9 +18,12 @@ import seqeval
 from seqeval.metrics import classification_report
 
 
+# Step 3 (Corrected): Load and Preprocess the Dataset
 def load_and_prepare_dataset(tokenizer):
     """Loads the CoNLL-2003 dataset and prepares it for training."""
-    dataset = load_dataset("conll2003")
+    # The only change is adding trust_remote_code=True
+    dataset = load_dataset("conll2003", trust_remote_code=True)
+
     label_list = dataset["train"].features["ner_tags"].feature.names
 
     def tokenize_and_align_labels(examples):
@@ -44,6 +49,7 @@ def load_and_prepare_dataset(tokenizer):
     return tokenized_datasets, label_list
 
 
+# Step 4: Define Evaluation Metrics
 def compute_metrics(p):
     """Computes precision, recall, F1, and accuracy for seqeval."""
     predictions, labels = p
@@ -64,10 +70,11 @@ def compute_metrics(p):
         "precision": report["micro avg"]["precision"],
         "recall": report["micro avg"]["recall"],
         "f1-score": report["micro avg"]["f1-score"],
-        "accuracy": report["micro avg"]["precision"],  # In seqeval, micro-avg precision is accuracy
+        "accuracy": report["micro avg"]["precision"],
     }
 
 
+# Step 5: Define the Fine-Tuning and Evaluation Function
 def fine_tune_and_evaluate(model_name, use_unsloth=False):
     """
     Fine-tunes and evaluates a given model for NER.
@@ -119,7 +126,7 @@ def fine_tune_and_evaluate(model_name, use_unsloth=False):
         learning_rate=2e-5,
         per_device_train_batch_size=8,
         per_device_eval_batch_size=8,
-        num_train_epochs=1,  # Using 1 epoch for a quick benchmark
+        num_train_epochs=1,
         weight_decay=0.01,
         evaluation_strategy="epoch",
         save_strategy="epoch",
@@ -161,16 +168,16 @@ def fine_tune_and_evaluate(model_name, use_unsloth=False):
     return results
 
 
+# Step 6: Run the Benchmark
 if __name__ == "__main__":
     # List of models to benchmark
     models_to_benchmark = {
-        "bert-base-cased": False,  # BERT model
+        "bert-base-cased": False,
         "Qwen/Qwen1.5-0.5B": True,
         "Qwen/Qwen1.5-1.8B": True,
         "Qwen/Qwen1.5-4B": True,
-        "Qwen/Qwen1.5-7B": True,  # Note: 8B is not a standard size, 7B is used instead
+        "Qwen/Qwen1.5-7B": True,
         "Qwen/Qwen1.5-14B": True,
-        # "Qwen/Qwen1.5-32b": True # This model may require more substantial hardware
     }
 
     all_results = []
@@ -183,6 +190,7 @@ if __name__ == "__main__":
             print(f"Failed to benchmark {model_name}. Error: {e}")
             all_results.append({"model": model_name, "error": str(e)})
 
+    # Step 7: Display Final Results
     print("\n\n--- Final Benchmark Summary ---")
     results_df = pd.DataFrame(all_results)
     print(results_df)
