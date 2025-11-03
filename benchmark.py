@@ -1,3 +1,4 @@
+from unsloth import FastLanguageModel
 import torch
 import numpy as np
 import pandas as pd
@@ -10,7 +11,7 @@ from transformers import (
     Trainer,
 )
 from peft import LoraConfig
-from unsloth import FastLanguageModel
+
 import seqeval
 from seqeval.metrics import classification_report
 
